@@ -1,0 +1,10 @@
+# Secrets: the bot token lives here. Never commit it.
+bot/config.json
+TestWoW-friends.zip
+
+# Runtime files
+bot/state.json
+bot/*.tmp
+*.log
+*.log.*
+__pycache__/

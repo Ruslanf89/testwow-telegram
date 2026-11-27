@@ -1,0 +1,7 @@
+{
+  "telegram_token": "PASTE_TOKEN_FROM_BOTFATHER",
+  "chat_id": "",
+  "wow_dir": "",
+  "pin_ladder": true,
+  "commands": true
+}

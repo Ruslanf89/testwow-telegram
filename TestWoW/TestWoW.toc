@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: TestWoW
+## Notes: Send level-ups and play sessions to Telegram. /tw for commands.
+## Version: 0.4.0
+## Author: TestWoW
+## SavedVariables: TestWoWDB
+
+TestWoW.lua
