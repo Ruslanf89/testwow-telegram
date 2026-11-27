@@ -1,4 +1,4 @@
--- TestWoW 0.4.0
+-- TestWoW 0.4.1
 --
 -- WoW addons cannot talk to the internet. This addon writes "FB1|..." lines into
 -- its SavedVariables file. A small program on this PC (forever_battle.py) watches
@@ -13,10 +13,11 @@
 --   FB1|L|id|unix|name|class|level|zone                           level (or Sync)
 --   FB1|T|id|unix|name|class|level|zone                           test
 --   FB1|Q|id|unix|name|class|level|seconds|startLevel|start|zone  Exit button: post now
+--   FB1|M|id|unix|name|class|level|seconds|startLevel|start|zone  Sync button: status now
 --   FB1|E|id|unix|name|class|level|seconds|startLevel|start|zone  any logout: post when WoW closes
 
 local PREFIX = "FB1|"
-local VERSION = "0.4.0"
+local VERSION = "0.4.1"
 
 TestWoWDB = TestWoWDB or {}
 
@@ -86,24 +87,10 @@ local function newID()
 	return string.format("%08x%04x", time(), math.random(0, 65535))
 end
 
--- Optional live path: a whisper to yourself lands in WoWChatLog.txt (hidden below).
-local function whisperSelf(line)
-	if TestWoWDB.noWhisper then
-		return
-	end
-	local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-	local me = UnitName("player")
-	if type(send) ~= "function" or type(me) ~= "string" then
-		return
-	end
-	pcall(send, (line:gsub("|", "^")), "WHISPER", nil, me)
-end
-
 local function record(op, level)
 	local name, class, _, zone = identity()
 	local line = string.format("%s%s|%s|%d|%s|%s|%d|%s", PREFIX, op, newID(), time(), name, class, level, zone)
 	remember(line)
-	whisperSelf(line)
 	return line
 end
 
@@ -192,9 +179,8 @@ local function syncNow()
 		say("Could not read your level. Try again in a moment.")
 		return
 	end
-	record("L", level)
-	TestWoWDB.lastLevel = level
-	say("Sending level " .. level .. " to Telegram (reloading UI)...")
+	remember((sessionLine("M")))
+	say("Sending your status (level " .. level .. ") to Telegram (reloading UI)...")
 	reloadNow()
 end
 
@@ -567,9 +553,6 @@ SlashCmdList.TESTWOW = function(raw)
 		TestWoWDB.manual = not TestWoWDB.manual
 		say("Auto-send on level-up " .. onOff(not TestWoWDB.manual) .. "."
 			.. (TestWoWDB.manual and " Use Sync, or the popup." or ""))
-	elseif text == "whisper" then
-		TestWoWDB.noWhisper = not TestWoWDB.noWhisper
-		say("Self-whisper " .. onOff(not TestWoWDB.noWhisper) .. ".")
 	elseif text == "" or text == "status" then
 		status()
 		say("Type /tw help for commands.")

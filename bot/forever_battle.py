@@ -176,8 +176,8 @@ def parse(line: str):
                     "class": parts[4], "level": int(parts[5]), "zone": "|".join(parts[6:]).strip()}
         except ValueError:
             return None
-    if op in ("Q", "E") and len(parts) >= 10:
-        # Q|E|id|unix|name|class|level|seconds|startLevel|sessionStart|zone
+    if op in ("Q", "E", "M") and len(parts) >= 10:
+        # Q|E|M|id|unix|name|class|level|seconds|startLevel|sessionStart|zone
         try:
             return {"op": op, "id": parts[1], "ts": int(parts[2]), "name": parts[3],
                     "class": parts[4], "level": int(parts[5]), "seconds": int(parts[6]),
@@ -218,6 +218,16 @@ def exit_text(ev) -> str:
     return (f"<b>👋 {html.escape(ev['name'])} left the game</b>\n"
             f"{html.escape(class_label(ev['class']))} · <b>Level {ev['level']}</b>{zone}\n"
             f"⏱ Played this session: <b>{duration_text(ev['seconds'])}</b>{levels}")
+
+
+def sync_text(ev) -> str:
+    """Sync button: where the character is right now."""
+    gained = ev["level"] - ev["start_level"]
+    levels = f" · +{gained} level{'s' if gained != 1 else ''}" if gained > 0 else ""
+    zone = f"\n{html.escape(ev['zone'])}" if ev.get("zone") else ""
+    return (f"<b>📍 {html.escape(ev['name'])}</b> · {html.escape(class_label(ev['class']))} "
+            f"<b>Level {ev['level']}</b>{zone}\n"
+            f"⏱ Playing for {duration_text(ev['seconds'])}{levels}")
 
 
 def display_name(name: str) -> str:
@@ -294,6 +304,17 @@ class App:
         if ev["op"] == "T":
             self.tg.send(self.chat_id, level_text(ev, test=True), silent=True)
             log.info("sent test for %s (%s)", ev["name"], source)
+            return
+        if ev["op"] == "M":
+            try:
+                self.tg.send(self.chat_id, sync_text(ev), silent=True)
+            except Exception:
+                self.seen.discard(ev["id"])
+                raise
+            log.info("sent status of %s: level %s (%s)", ev["name"], ev["level"], source)
+            self.update_roster(ev, announce=False)
+            self.set_current(ev)
+            self.refresh_ladder()
             return
         key = ev["name"].lower()
         prev = self.state["roster"].get(key, {}).get("announced", 0)
